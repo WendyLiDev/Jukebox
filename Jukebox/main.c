@@ -9,29 +9,93 @@
 
 #include <avr/io.h>
 #include <stdbool.h>
-#include <string.h>
-#include "io.c"
+#include <avr/interrupt.h>
+//#include "io.c"
 
+volatile unsigned char TimerFlag = 0; //TimerISR() sets this to 1, we need to clear to 0
 
-//const double noteFreq[] = {261.63, 293.66, 329.63, 349.23, 392.00, 440.00, 493.88, 523.25}; // array of notes to play
-//static char currFreqIndex = 0;
-//static bool sound;
+unsigned long _avr_timer_M = 1; //start count from here to 0, default 1 ms
+unsigned long _avr_timer_cntcurr = 0; // current internal count of 1 ms ticks
 
 static unsigned char currSong = 0;
-const string StartMessage = "Select Song";
+const char* StartMessage = "Select Song";
 static bool songDone = 0;
 
-const double *arrayOfArrays[];
+const double *songData[2];
 
-const double HappyBirthday[] = {392.00, 392.00, 440.00, 392.00, 261.63, 493.88, 0,
-                                    392.00, 392.00,  440.00, 392.00, 293.66, 261.63, 0,
-                                    392.00, 392.00, 392.00, 329.63, 261.63};
+const double HappyBirthday[] = {    392.00, 392.00, 440.00, 392.00, 523.25, 493.88, 493.88, 0,
+                                    392.00, 392.00, 440.00, 392.00, 587.33, 587.33, 523.25, 523.25 0,
+                                    392.00, 392.00, 392.00, 659.25, 659.25, 523.25, 493.88, 440.00, 440.00, 0,
+                                    698.46, 698.46, 659.25, 523.25, 587.33, 587.33, 523.25, 0
+                                };
+
 const double YankeeDoodle[] = {};
-const string songList[] = {"Happy Birthday", "Yankee Doodle" };
-arrayOfArrays[0] = HappyBirthday;
-arrayOfArrays[1] = YankeeDoodle;
+const char* songList[] = {"Happy Birthday", "Yankee Doodle" };
+songData[0] = HappyBirthday;
+songData[1] = YankeeDoodle;
 unsigned char GetBit(unsigned char x, unsigned char k){
 	return ((x & (0x01 << k)) != 0);
+}
+
+
+void TimerOn(){
+    //Initialize and start the timer
+	//AVR timer/counter controller register TCCR1
+	/*
+     bit3 = 0: CTC mode(clear timer on compare)
+     bit2-bit1-bit0 = 011: pre-scaler/64
+     00001011: 0x0B
+     So 8 MHz clock or 8000000 / 64 = 125000 ticks/s
+     So TCNT1 register will count at 125000 ticks/s
+     */
+	TCCR1B = 0x0B;
+    
+	//AVR output compare register OCR1A
+	/*
+     Timer interrupt will be generated when TCNT1 == OCR1A
+     Want a 1 ms tick; .001 s * 125000 ticks/s = 125
+     So when TCNT1 register equals 125, 1 ms has passed
+     So we compare to 125
+     */
+	OCR1A = 125;
+    
+	//AVR timer interrupt mask register
+	TIMSK1 = 0x02; //bit1: OCIE1A: enable compare match interrupt
+    
+	//init avr counter
+	TCNT1 = 0;
+    
+	_avr_timer_cntcurr = _avr_timer_M;
+	//TimerISR called every _avr_timer_cntcurr milliseconds
+    
+	//enable global interrupts
+	SREG |= 0x80;
+}
+
+void TimerOff(){
+    //Stop the timer
+	TCCR1B = 0x00; //timer off bc 0
+}
+
+void TimerISR(){
+    //Auto-call when the timer ticks, with the contents filled by the user ONLY with an instruction that sets TimerFlag = 1
+	TimerFlag = 1;
+}
+
+ISR(TIMER1_COMPA_vect){
+    //Interrupt
+	_avr_timer_cntcurr--; //count down to 0
+	if(_avr_timer_cntcurr == 0)
+	{
+		TimerISR(); //call ISR that user uses
+		_avr_timer_cntcurr = _avr_timer_M;
+	}
+}
+
+void TimerSet(unsigned long M){
+    //Set the timer to tick every M ms
+	_avr_timer_M = M;
+	_avr_timer_cntcurr = _avr_timer_M;
 }
 
 void set_PWM(double frequency) {
@@ -216,21 +280,20 @@ void selectSong(){
 	switch(adjust_State){
 		case select_init:
             currSong = 0;
-            LCD_init();
-            //Display "Select Song"
-            LCD_DisplayString(1, "Select Song");
+            //LCD_init();
+            //LCD_DisplayString(1, "Select Song"); //Display "Select Song"
             break;
         case select_next:
             if(currSong != (songList.size()-1)){
                 ++currSong;
             }
-            LCD_DisplayString(1, songList[currSong]); //Update LCD song display
+            //LCD_DisplayString(1, songList[currSong]); //Update LCD song display
             break;
         case select_prev:
             if(currSong != 0){
                 --currSong;
             }
-            LCD_DisplayString(1, songList[currSong]); //Update LCD song display
+            //LCD_DisplayString(1, songList[currSong]); //Update LCD song display
             break;
         default:
 			break;
@@ -239,12 +302,21 @@ void selectSong(){
 
 int main(void)
 {
+    DDRA = 0x00; PORTA = 0xFF;
+	DDRB = 0xFF; PORTB = 0x00;
+	TimerSet(37.5);
+	TimerOn();
+    
 	selectSong_State = select_init;
     playSong_State = play_init;
     while(1)
     {
 		selectSong();
         playSong();
+        
+        while(!TimerFlag);
+        TimerFlag = 0;
+        //continue;
     }
     return 0;
 }
