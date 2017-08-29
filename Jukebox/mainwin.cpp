@@ -142,7 +142,7 @@ void playSong(){
 			if(!GetBit(~PINA, 2)){
 				playSong_State = play_wait;
 			}
-			else{
+			else if (GetBit(~PINA,2)){
 				playSong_State = play_press;
 			}
             break;
@@ -150,7 +150,7 @@ void playSong(){
             if(GetBit(~PINA, 2)){
 				playSong_State = play_waitrel;
 			}
-			else{
+			else if (!GetBit(~PINA,2)){
 				playSong_State = play_play;
 			}
             break;
@@ -158,7 +158,7 @@ void playSong(){
 			if(GetBit(~PINA, 2)){
 				playSong_State = play_waitrel;
 			}
-			else{
+			else if (!GetBit(~PINA,2)){
 				playSong_State = play_play;
 			}
             break;
@@ -169,7 +169,7 @@ void playSong(){
 			else if(!GetBit(~PINA, 2) && !songDone){
 				playSong_State = play_play;
 			}
-			else{
+			else if (GetBit(~PINA,2)){
 				playSong_State = play_stop;
 			}
             break;
@@ -177,7 +177,7 @@ void playSong(){
             if(GetBit(~PINA, 2)){
 				playSong_State = play_stop_wait_rel;
 			}
-			else{
+			else if (!GetBit(~PINA,2)){
 				playSong_State = play_wait;
 			}
             break;
@@ -185,7 +185,7 @@ void playSong(){
             if(GetBit(~PINA, 2)){
 				playSong_State = play_stop_wait_rel;
 			}
-			else{
+			else if (!GetBit(~PINA,2)){
 				playSong_State = play_wait;
 			}
             break;
@@ -195,6 +195,7 @@ void playSong(){
             songDone = 0;
             break;
         case play_wait:
+			//PORTD = SetBit(PORTD, 0, 0);
             songDone = 0;
             break;
         case play_press:
@@ -203,7 +204,7 @@ void playSong(){
             break;
         case play_play:
 			PORTD = SetBit(PORTD, 0, 1);
-            for(unsigned int i = 0; i < sizeof(songData[currSong])-1; ++i){
+            for(static unsigned int i = 0; i < sizeof(songData[currSong])-1; ++i){
                 set_PWM(songData[currSong][i]);
             }
             songDone = 1;
