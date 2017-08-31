@@ -188,103 +188,123 @@ void PWM_off() {
 	TCCR3B = 0x00;
 }
 
-
-static unsigned char currSong = 0;
-const char* StartMessage = "Select Song";
 static bool songDone = 0;
-
-const char numSongs = 2 ;
-const char* songList[] = { "Happy Birthday", "Yankee Doodle" };
+static bool req = 0;// used in waitPress to tell playSong when to begin playing song
+static char currSong = -1;
+static unsigned char currNote = 0;
+const char numSongs = 4;
+const char* songList[] = { "Happy Birthday", "Yankee Doodle", "Chopsticks", "London Bridge" };
 const double songData[2][20] = { {	392.00, 392.00, 440.00, 392.00, 261.63, 493.88, 0,
 									392.00, 392.00, 440.00, 392.00, 293.66, 261.63, 0,
 									392.00, 392.00, 392.00, 329.63, 261.63}, 
-								  { 0 } 
-							};
+								 {	0 }, 
+							     {	0 },
+								 {	0 }
+							   };
+							
 
-enum playSongs{play_init, play_wait, play_press, play_waitrel, play_play, play_stop, play_stop_wait_rel}playSong_State;
+enum waitPressStates{wait_init, wait_wait, wait_press, wait_rel}waitPress_State;
+void waitPress(){
+	switch(waitPress_State){
+		case wait_init:
+			waitPress_State = wait_wait;
+			break;
+		case wait_wait:
+			if(!GetBit(~PINA, 2)){
+				waitPress_State = wait_wait;
+			}
+			else if(GetBit(~PINA, 2)){
+				waitPress_State = wait_press;
+			}
+			break;
+		case wait_press:
+			if(!GetBit(~PINA, 2)){
+				waitPress_State = wait_wait;
+			}
+			else if(GetBit(~PINA, 2)){
+				waitPress_State = wait_rel;
+			}
+			break;
+		case wait_rel: 
+			if(!GetBit(~PINA, 2)){
+				waitPress_State = wait_wait;
+			}
+			else if(GetBit(~PINA, 2)){
+				waitPress_State = wait_rel;
+			}
+			break;
+	}
+	switch(waitPress_State){
+		case wait_init:
+			req = 0;
+			break;
+		case wait_wait:
+			req = 0;
+			break;
+		case wait_press:
+			req = 1;
+			break;
+		case wait_rel:
+			//req = 0;
+			break;
+	}
+}
 
+enum playSongs{play_init, play_wait, play_play, play_stop}playSong_State;
 void playSong(){
     switch(playSong_State){
-        case play_init:
-            playSong_State = play_wait;
-            break;
-        case play_wait:
-			if(!GetBit(~PINA, 2)){
+	    case play_init:
+			playSong_State = play_wait;
+			break;
+	    case play_wait:
+			if(!req){
 				playSong_State = play_wait;
 			}
-			else if (GetBit(~PINA,2)){
-				playSong_State = play_press;
-			}
-            break;
-        case play_press:
-            if(GetBit(~PINA, 2)){
-				playSong_State = play_waitrel;
-			}
-			else if (!GetBit(~PINA,2)){
+			else if(req){
 				playSong_State = play_play;
 			}
-            break;
-        case play_waitrel:
-			if(GetBit(~PINA, 2)){
-				playSong_State = play_waitrel;
-			}
-			else if (!GetBit(~PINA,2)){
-				playSong_State = play_play;
-			}
-            break;
-        case play_play:
-            if(!GetBit(~PINA, 2) && songDone){
-				playSong_State = play_wait;
-			}
-			else if(!GetBit(~PINA, 2) && !songDone){
-				playSong_State = play_play;
-			}
-			else if (GetBit(~PINA,2)){
+			break;
+	    case play_play:
+			if(req){ // if req is up again, stop song
 				playSong_State = play_stop;
 			}
-            break;
-        case play_stop:
-            if(GetBit(~PINA, 2)){
-				playSong_State = play_stop_wait_rel;
+			else if(!songDone && !req){ // continue to play song
+				playSong_State = play_play;
 			}
-			else if (!GetBit(~PINA,2)){
+			else if(songDone){ // if song is finished playing, return to wait state
 				playSong_State = play_wait;
 			}
-            break;
-        case play_stop_wait_rel:
-            if(GetBit(~PINA, 2)){
-				playSong_State = play_stop_wait_rel;
-			}
-			else if (!GetBit(~PINA,2)){
-				playSong_State = play_wait;
-			}
-            break;
+			break;
+	    case play_stop:
+			playSong_State = play_wait;
+			break;
     }
-    switch(playSong_State){
-        case play_init:
-            songDone = 0;
-            break;
-        case play_wait:
-			//PORTD = SetBit(PORTD, 0, 0);
-            songDone = 0;
-            break;
-        case play_press:
-            break;
-        case play_waitrel:
-            break;
-        case play_play:
-			//PORTD = SetBit(PORTD, 0, 1);
-            //for(unsigned int i = 0; i < sizeof(songData[currSong])-1; ++i){
-            //    set_PWM(songData[currSong][i]);
-            //}
-            songDone = 1;
-            break;
-        case play_stop:
-			//PORTD = SetBit(PORTD, 0, 0);
-        break;
-        case play_stop_wait_rel:
-            break;
-    }
+	switch(playSong_State){
+		case play_init:
+			songDone = 0;
+			currNote = 0;
+			PWM_on();
+			break;
+		case play_wait:
+			songDone = 0;
+			break;
+		case play_play:
+			while(currNote < 19){ //sizeof(songData[currSong])-1){
+				//set_PWM(songData[currSong][currNote]);
+				set_PWM(300);
+				++currNote;
+			}
+			if(currNote == 18){ //sizeof(songData[currSong])-1){
+				songDone = 1;
+			}
+			break;
+		case play_stop:
+			set_PWM(0);
+			PWM_off();
+			currNote = 0;
+			break;
+	}
+	
 }
 
 enum selectSongs{select_init, select_wait, select_next, select_waitrel1, select_prev, select_waitrel2}selectSong_State;
@@ -341,30 +361,23 @@ void selectSong(){
             selectSong_State = select_wait;
 			break;
 	}
-	
 	switch(selectSong_State){
 		case select_init:
-            currSong = 0;
-            
+            currSong = -1;
             //Display "Select Song"
-            //LCD_DisplayString(1, "Select Song");
-			
+            LCD_DisplayString(1, "Select Song");
             break;
         case select_next:
-			//PORTD = SetBit(PORTB, 2, 0);
-			//PORTD = SetBit(PORTB, 1, 1);
-            if(currSong != numSongs ){ 
+            if(currSong != numSongs-1 ){ 
                 ++currSong;
             }
-            //LCD_DisplayString(1, songList[currSong]); //Update LCD song display
+			LCD_DisplayString(1, songList[currSong]);
             break;
         case select_prev:
-			//PORTD = SetBit(PORTB, 1, 0);
-			//PORTD = SetBit(PORTB, 2, 1);
             if(currSong != 0){
                 --currSong;
             }
-            //LCD_DisplayString(1, songList[currSong]); //Update LCD song display
+			LCD_DisplayString(1, songList[currSong]);
             break;
         default:
 			break;
@@ -378,22 +391,24 @@ int main(void)
 	DDRC = 0xFF; PORTC = 0x00; // LCD data lines
 	DDRD = 0xFF; PORTD = 0x00; // LCD control lines
 	
-	//TimerSet(200);
-	//TimerOn();
+	TimerSet(200);
+	TimerOn();
 	
+	waitPress_State = wait_init;
 	selectSong_State = select_init;
     playSong_State = play_init;
 	
+	waitPress();
 	LCD_init();
-	LCD_DisplayString(1, "Hello World");
+	LCD_DisplayString(1, "Select Song");
 		
     while(1)
     {
 		selectSong();
         playSong();
 		
-		//while(!TimerFlag);
-		//TimerFlag = 0;
+		while(!TimerFlag);
+		TimerFlag = 0;
 		continue;
     }
     return 0;
