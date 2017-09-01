@@ -133,7 +133,7 @@ void LCD_ClearScreen(void) {
 	LCD_WriteCommand(0x01);
 }
 void LCD_init(void) {
-    
+
 	//wait for 100 ms.
 	delay_ms(100);
 	LCD_WriteCommand(0x38);
@@ -170,7 +170,7 @@ void LCD_Cursor(unsigned char column) {
 	if ( column < 17 ) { // 16x1 LCD: column < 9
 		// 16x2 LCD: column < 17
 		LCD_WriteCommand(0x80 + column - 1);
-    } else {
+		} else {
 		LCD_WriteCommand(0xB8 + column - 9);	// 16x1 LCD: column - 1
 		// 16x2 LCD: column - 9
 	}
@@ -178,10 +178,10 @@ void LCD_Cursor(unsigned char column) {
 void delay_ms(int miliSec) {//for 8 Mhz crystal
 	int i,j;
 	for(i=0;i<miliSec;i++)
-        for(j=0;j<775;j++)
-        {
-            asm("nop");
-        }
+	for(j=0;j<775;j++)
+	{
+		asm("nop");
+	}
 }
 
 volatile unsigned char TimerFlag = 0; //TimerISR() sets this to 1, we need to clear to 0
@@ -289,30 +289,31 @@ void PWM_off() {
 	TCCR3B = 0x00;
 }
 
+unsigned char period = 200;
 static bool songDone = 0;
 static bool req = 0;// used in waitPress to tell playSong when to begin playing song
 static char currSong = -1;
 static unsigned char currNote = 0;
 const char numSongs = 4;
 const char* songList[] = { "Happy Birthday", "Yankee Doodle", "Jingle Bells", "Twinkle Twinkle" };
-char* disp; // For displaying what is playing
+char* disp; // For displaying what is playing 
 const double songData[4][150] = { { C4, 0, C4, 0, D4, D4, 0, C4, C4, 0, F4, F4, 0, E4, E4, E4, E4, 0,
-    C4, 0, C4, 0, D4, D4, 0, C4, C4, 0, G4, G4, 0, F4, F4, F4, F4, 0,
-    C4, 0, C4, 0, C5, C5, 0, LA4, LA4, 0, F4, F4, 0, E4, E4, 0, F4 ,F4, F4, F4, 1 },
-    {	G4, 0, G4, 0, LA4, 0, B4, 0, G4, 0, B4, 0, LA4, LA4, 0,
-        G4, 0, G4, 0, LA4, 0, B4, 0, G4, G4, 0, Gb4, Gb4, 0,
-        G4, 0, G4, 0, LA4, 0, B4, 0, C5, 0, B4, 0, LA4, 0, G4, 0, Gb4, 0, D4, 0, E4, 0, Gb4, 0, G4, G4, 0, G4, G4, 1 },
-    {	E4, 0, E4, 0, E4, E4, 0, E4, 0, E4, 0, E4, E4, 0, E4, 0, G4, 0, C4, 0, D4, 0, E4, E4, 0,
-        F4, 0, F4, 0, F4, 0, F4, 0, F4, 0, E4, 0, E4, 0, E4, 0, E4, 0, D4, 0, D4, 0 ,E4, 0, D4, D4, 0, G4, G4, 1 },
-    {	C4, 0, C4, 0, G4, 0, G4, 0, LA4, 0, LA4, 0, G4, G4, 0,
-        F4, 0, F4, 0, E4, 0, E4, 0, D4, 0, D4, 0, C4, C4, 0,
-        G4, 0 ,G4, 0, F4, 0, F4, 0, E4, 0, E4, 0, D4, D4, 0,
-        G4, 0 ,G4, 0, F4, 0, F4, 0, E4, 0, E4, 0, D4, D4, 0,
-        C4, 0, C4, 0, G4, 0, G4, 0, LA4, 0, LA4, 0, G4, G4, 0,
-        F4, 0, F4, 0, E4, 0, E4, 0, D4, 0, D4, 0, C4, C4, 1}
-}; //songDone will be denoted with a frequency note of 1 at the end of each song
-
-
+									C4, 0, C4, 0, D4, D4, 0, C4, C4, 0, G4, G4, 0, F4, F4, F4, F4, 0,
+									C4, 0, C4, 0, C5, C5, 0, LA4, LA4, 0, F4, F4, 0, E4, E4, 0, F4 ,F4, F4, F4, 1 }, 
+								 {	G4, 0, G4, 0, LA4, 0, B4, 0, G4, 0, B4, 0, LA4, LA4, 0,
+									G4, 0, G4, 0, LA4, 0, B4, 0, G4, G4, 0, Gb4, Gb4, 0,
+									G4, 0, G4, 0, LA4, 0, B4, 0, C5, 0, B4, 0, LA4, 0, G4, 0, Gb4, 0, D4, 0, E4, 0, Gb4, 0, G4, G4, 0, G4, G4, 1 }, 
+							     {	E4, 0, E4, 0, E4, E4, 0, E4, 0, E4, 0, E4, E4, 0, E4, 0, G4, 0, C4, 0, D4, 0, E4, E4, 0,
+								    F4, 0, F4, 0, F4, 0, F4, 0, F4, 0, E4, 0, E4, 0, E4, 0, E4, 0, D4, 0, D4, 0 ,E4, 0, D4, D4, 0, G4, G4, 1 },
+								 {	C4, 0, C4, 0, G4, 0, G4, 0, LA4, 0, LA4, 0, G4, G4, 0,
+									F4, 0, F4, 0, E4, 0, E4, 0, D4, 0, D4, 0, C4, C4, 0,
+									G4, 0 ,G4, 0, F4, 0, F4, 0, E4, 0, E4, 0, D4, D4, 0,
+									G4, 0 ,G4, 0, F4, 0, F4, 0, E4, 0, E4, 0, D4, D4, 0,
+									C4, 0, C4, 0, G4, 0, G4, 0, LA4, 0, LA4, 0, G4, G4, 0,
+									F4, 0, F4, 0, E4, 0, E4, 0, D4, 0, D4, 0, C4, C4, 1}
+							   }; //songDone will be denoted with a frequency note of 1 at the end of each song
+								
+						
 enum waitPressStates{wait_init, wait_wait, wait_press, wait_rel}waitPress_State;
 void waitPress(){
 	switch(waitPress_State){
@@ -335,7 +336,7 @@ void waitPress(){
 				waitPress_State = wait_rel;
 			}
 			break;
-		case wait_rel:
+		case wait_rel: 
 			if(!GetBit(~PINA, 2)){
 				waitPress_State = wait_wait;
 			}
@@ -355,7 +356,7 @@ void waitPress(){
 			req = 1;
 			break;
 		case wait_rel:
-			//req = 0;
+			req = 0;
 			break;
 	}
 }
@@ -401,6 +402,7 @@ void playSong(){
 			PORTD = SetBit(~PORTD, 2, 0);
 			PORTD = SetBit(~PORTD, 3, 0);
 			songDone = 0;
+			currNote = 0;
 			set_PWM(0);
 			break;
 		case play_play:
@@ -410,25 +412,25 @@ void playSong(){
 			}
 			if(!songDone){
 				set_PWM(songData[currSong][currNote]);
-				if(songData[currSong][currNote] == C4 || songData[currSong][currNote] == D4){
+				if((songData[currSong][currNote] == C4) || (songData[currSong][currNote] == D4)){
 					PORTD = SetBit(~PORTD, 0, 1);
 					PORTD = SetBit(~PORTD, 1, 0);
 					PORTD = SetBit(~PORTD, 2, 0);
 					PORTD = SetBit(~PORTD, 3, 0);
 				}
-				else if(songData[currSong][currNote] == E4 || songData[currSong][currNote] == F4){
+				else if((songData[currSong][currNote] == E4) || (songData[currSong][currNote] == F4)){
 					PORTD = SetBit(~PORTD, 0, 0);
 					PORTD = SetBit(~PORTD, 1, 1);
 					PORTD = SetBit(~PORTD, 2, 0);
 					PORTD = SetBit(~PORTD, 3, 0);
 				}
-				else if(songData[currSong][currNote] == G4 || songData[currSong][currNote] == LA4){
+				else if((songData[currSong][currNote] == G4) || (songData[currSong][currNote] == LA4)){
 					PORTD = SetBit(~PORTD, 0, 0);
 					PORTD = SetBit(~PORTD, 1, 0);
 					PORTD = SetBit(~PORTD, 2, 1);
 					PORTD = SetBit(~PORTD, 3, 0);
 				}
-				else if(songData[currSong][currNote] == B4 || songData[currSong][currNote] == C5){
+				else if((songData[currSong][currNote] == B4) || (songData[currSong][currNote] == C5)){
 					PORTD = SetBit(~PORTD, 0, 0);
 					PORTD = SetBit(~PORTD, 1, 0);
 					PORTD = SetBit(~PORTD, 2, 0);
@@ -443,6 +445,51 @@ void playSong(){
 			break;
 	}
 	
+}
+
+enum speedUps{speed_init, speed_wait, speed_up, speed_wait_rel}speedUp_State;
+	
+void speedUp(){
+	switch(speedUp_State){
+		case speed_init:
+		speedUp_State = speed_wait;
+			break;
+		case speed_wait:
+			if(GetBit(~PINA, 3)){
+				speedUp_State = speed_up;
+			}
+			else if(!GetBit(~PINA, 3)){
+				speedUp_State = speed_wait;
+			}
+			break;
+		case speed_up:
+			if(GetBit(~PINA, 3)){
+				speedUp_State = speed_wait_rel;
+			}
+			else if(!GetBit(~PINA, 3)){
+				speedUp_State = speed_wait;
+			}
+			break;
+		case speed_wait_rel:
+			if(GetBit(~PINA, 3)){
+				speedUp_State = speed_wait_rel;
+			}
+			else if(!GetBit(~PINA, 3)){
+				speedUp_State = speed_wait;
+			}
+			break;
+	}
+	switch(speedUp_State){
+		case speed_up:
+			if(period >= 60){
+				period = period - 30;
+			}
+			else{
+				period = 30;
+			}
+			TimerSet(period);
+			break;
+	}
 }
 
 enum selectSongs{select_init, select_wait, select_next, select_waitrel1, select_prev, select_waitrel2}selectSong_State;
@@ -506,7 +553,7 @@ void selectSong(){
             LCD_DisplayString(1, "Select Song");
             break;
         case select_next:
-            if(currSong != numSongs-1 ){
+            if(currSong != numSongs-1 ){ 
                 ++currSong;
             }
 			currNote = 0;
@@ -532,7 +579,7 @@ int main(void)
 	DDRC = 0xFF; PORTC = 0x00; // LCD data lines
 	DDRD = 0xFF; PORTD = 0x00; // LCD control lines
 	
-	TimerSet(100);
+	TimerSet(period);
 	TimerOn();
 	
 	waitPress_State = wait_init;
@@ -549,11 +596,11 @@ int main(void)
 		waitPress();
 		selectSong();
         playSong();
+		speedUp();
 		
 		while(!TimerFlag);
 		TimerFlag = 0;
 		continue;
     }
     return 0;
-    
 }
