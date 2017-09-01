@@ -384,7 +384,6 @@ void playSong(){
 			}
 			else if(songDone){ // if song is finished playing, return to wait state
 				playSong_State = play_wait;
-				req = 0;
 			}
 			break;
 	    case play_stop:
@@ -403,6 +402,7 @@ void playSong(){
 			PORTD = SetBit(~PORTD, 2, 0);
 			PORTD = SetBit(~PORTD, 3, 0);
 			songDone = 0;
+			currNote = 0;
 			set_PWM(0);
 			break;
 		case play_play:
