@@ -17,27 +17,12 @@ volatile unsigned char TimerFlag = 0; //TimerISR() sets this to 1, we need to cl
 unsigned long _avr_timer_M = 1; //start count from here to 0, default 1 ms
 unsigned long _avr_timer_cntcurr = 0; // current internal count of 1 ms ticks
 
-static unsigned char currSong = 0;
-const char* StartMessage = "Select Song";
-static bool songDone = 0;
-
-const double *songData[2];
-
-const double HappyBirthday[] = {    392.00, 392.00, 440.00, 392.00, 523.25, 493.88, 493.88, 0,
-                                    392.00, 392.00, 440.00, 392.00, 587.33, 587.33, 523.25, 523.25 0,
-                                    392.00, 392.00, 392.00, 659.25, 659.25, 523.25, 493.88, 440.00, 440.00, 0,
-                                    698.46, 698.46, 659.25, 523.25, 587.33, 587.33, 523.25, 0
-                                };
-
-const double YankeeDoodle[] = {};
-const char* songList[] = {"Happy Birthday", "Yankee Doodle" };
-songData[0] = HappyBirthday;
-songData[1] = YankeeDoodle;
 unsigned char GetBit(unsigned char x, unsigned char k){
 	return ((x & (0x01 << k)) != 0);
 }
-
-
+unsigned char SetBit(unsigned char x, unsigned char k, unsigned char b){
+	return (b ? x | (0x01 << k) : x & ~(0x01 << k));
+}
 void TimerOn(){
     //Initialize and start the timer
 	//AVR timer/counter controller register TCCR1
@@ -71,17 +56,14 @@ void TimerOn(){
 	//enable global interrupts
 	SREG |= 0x80;
 }
-
 void TimerOff(){
     //Stop the timer
 	TCCR1B = 0x00; //timer off bc 0
 }
-
 void TimerISR(){
     //Auto-call when the timer ticks, with the contents filled by the user ONLY with an instruction that sets TimerFlag = 1
 	TimerFlag = 1;
 }
-
 ISR(TIMER1_COMPA_vect){
     //Interrupt
 	_avr_timer_cntcurr--; //count down to 0
@@ -91,13 +73,11 @@ ISR(TIMER1_COMPA_vect){
 		_avr_timer_cntcurr = _avr_timer_M;
 	}
 }
-
 void TimerSet(unsigned long M){
     //Set the timer to tick every M ms
 	_avr_timer_M = M;
 	_avr_timer_cntcurr = _avr_timer_M;
 }
-
 void set_PWM(double frequency) {
     // 0.954 hz is lowest frequency possible with this function,
     // based on settings in PWM_on()
@@ -124,7 +104,6 @@ void set_PWM(double frequency) {
 		current_frequency = frequency; // Updates the current frequency
 	}
 }
-
 void PWM_on() {
 	TCCR3A = (1 << COM3A0);
 	// COM3A0: Toggle PB6 on compare match between counter and OCR3A
@@ -133,91 +112,71 @@ void PWM_on() {
 	// CS31 & CS30: Set a prescaler of 64
 	set_PWM(0);
 }
-
 void PWM_off() {
 	TCCR3A = 0x00;
 	TCCR3B = 0x00;
 }
 
-enum playSongs{play_init, play_wait, play_press, play_waitrel, play_play, play_stop, play_stop_wait_rel}playSong_State;
+static unsigned char currSong = 0;
+const char* StartMessage = "Select Song";
+static bool songDone = 0;
+
+const char numSongs = 2 ;
+const char* songList[numSongs] = { "Happy Birthday", "Yankee Doodle" };
+const double songData[2][20] = { {	392.00, 392.00, 440.00, 392.00, 261.63, 493.88, 0,
+    392.00, 392.00, 440.00, 392.00, 293.66, 261.63, 0,
+    392.00, 392.00, 392.00, 329.63, 261.63},
+    { 0 }
+};
+
+
+enum requestPlays{req_init, req_wait, req_press, req_wait_rel}requestPlay_State;
+
+void requestPlay(){
+    switch(requestPlay_State){
+        case req_init:
+            break;
+        case req_wait:
+            break;
+        case req_press:
+            break;
+        case req_wait_rel:
+            break;
+    }
+    switch(requestPlay_State){
+        case req_init:
+            break;
+        case req_wait:
+            break;
+        case req_press:
+            break;
+        case req_wait_rel:
+            break;
+    }
+}
+
+
+enum playSongs{play_init, play_wait, play_play, play_stop}playSong_State;
 
 void playSong(){
     switch(playSong_State){
         case play_init:
-            playSong_State = play_wait;
             break;
         case play_wait:
-            if(GetBit(~PINA, 2)){
-                playSong_State = play_press;
-            }
-            else{
-                playSong_State = play_wait;
-            }
-            break;
-        case play_press:
-            if(GetBit(~PINA, 2)){
-                playSong_State = play_waitrel;
-            }
-            else{
-                playSong_State = play_play;
-            }
-            break;
-        case play_waitrel:
-            if(GetBit(~PINA, 2)){
-                playSong_State = play_waitrel;
-            }
-            else{
-                playSong_State = play_play;
-            }
             break;
         case play_play:
-            if(GetBit(~PINA, 2)){
-                playSong_State = play_stop;
-            }
-            else if(!GetBit(~PINA, 2) && !songDone){
-                playSong_State = play_play;
-            }
-            else{
-                playSong_State = play_wait;
-            }
             break;
         case play_stop:
-            if(GetBit(~PINA, 2)){
-                playSong_State = play_stop_wait_rel;
-            }
-            else{
-                playSong_State = play_wait;
-            }
-            break;
-        case play_stop_wait_rel:
-            if(GetBit(~PINA, 2)){
-                playSong_State = play_stop_wait_rel;
-            }
-            else{
-                playSong_State = play_wait;
-            }
             break;
     }
     switch(playSong_State){
         case play_init:
-            songDone = 0;
             break;
         case play_wait:
-            songDone = 0;
-            break;
-        case play_press:
-            break;
-        case play_waitrel:
             break;
         case play_play:
-            for(int i = 0; i < songData[currSong].size()-1; ++i){
-                set_PWM(songData[currSong].at(i));
-            }
-            songDone = 1;
             break;
         case play_stop:
-            break;
-        case play_stop_wait_rel:
             break;
     }
 }
@@ -225,7 +184,7 @@ void playSong(){
 enum selectSongs{select_init, select_wait, select_next, select_waitrel1, select_prev, select_waitrel2}selectSong_State;
 
 void selectSong(){
-	switch(adjust_State){
+	switch(selectSong_State){
         case select_init:
             selectSong_State = select_wait;
             break;
@@ -277,19 +236,24 @@ void selectSong(){
 			break;
 	}
 	
-	switch(adjust_State){
+	switch(selectSong_State){
 		case select_init:
             currSong = 0;
             //LCD_init();
-            //LCD_DisplayString(1, "Select Song"); //Display "Select Song"
+            //Display "Select Song"
+            //LCD_DisplayString(1, "Select Song");
             break;
         case select_next:
-            if(currSong != (songList.size()-1)){
+			PORTD = SetBit(PORTB, 2, 0);
+			PORTD = SetBit(PORTB, 1, 1);
+            if(currSong != numSongs ){
                 ++currSong;
             }
             //LCD_DisplayString(1, songList[currSong]); //Update LCD song display
             break;
         case select_prev:
+			PORTD = SetBit(PORTB, 1, 0);
+			PORTD = SetBit(PORTB, 2, 1);
             if(currSong != 0){
                 --currSong;
             }
@@ -302,21 +266,23 @@ void selectSong(){
 
 int main(void)
 {
-    DDRA = 0x00; PORTA = 0xFF;
+	DDRA = 0x00; PORTA = 0xFF;
 	DDRB = 0xFF; PORTB = 0x00;
-	TimerSet(37.5);
-	TimerOn();
-    
+	DDRD = 0xFF; PORTD = 0x00;
+	
+	//TimerSet(200);
+	//TimerOn();
+	
 	selectSong_State = select_init;
     playSong_State = play_init;
     while(1)
     {
 		selectSong();
         playSong();
-        
-        while(!TimerFlag);
-        TimerFlag = 0;
-        //continue;
+		
+		//while(!TimerFlag);
+		//TimerFlag = 0;
+		//continue;
     }
     return 0;
 }
