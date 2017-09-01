@@ -16,3 +16,14 @@ Play from a selection of songs through a speaker. The song title will be display
 - LCD Screen
 - 10k potentiometer 
 - Power adapter
+
+## Video Demonstration: 
+https://www.youtube.com/watch?v=5l4ot1A8iqE
+
+## Source Code: 
+https://github.com/wendingoli/Jukebox/blob/master/Jukebox/main.c
+The source code that controls the entire program.
+
+## Used outer sources: 
+http://discuss.littlebits.cc/t/playing-a-melody-using-a-button-a-counter/25035
+I used the code note definitions from this link for my program.
