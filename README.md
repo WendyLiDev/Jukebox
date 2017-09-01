@@ -20,10 +20,17 @@ Play from a selection of songs through a speaker. The song title will be display
 ## Video Demonstration: 
 https://www.youtube.com/watch?v=5l4ot1A8iqE
 
+## How I wired my board:
+In the folder labeled "images", there are images of my board setup.
+- Buttons are connected to PA0 through PA3
+- LEDs are connected to PD0 through PD3
+- LCD is connected to Port C
+- Speaker is connected to PB6
+
 ## Source Code: 
-https://github.com/wendingoli/Jukebox/blob/master/Jukebox/main.c
+https://github.com/wendingoli/Jukebox/blob/master/Jukebox/main.c <br />
 The source code that controls the entire program.
 
 ## Used outer sources: 
-http://discuss.littlebits.cc/t/playing-a-melody-using-a-button-a-counter/25035
-I used the code note definitions from this link for my program.
+http://discuss.littlebits.cc/t/playing-a-melody-using-a-button-a-counter/25035 <br />
+I used this code's note definitions for my program.
